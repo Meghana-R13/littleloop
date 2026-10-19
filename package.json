@@ -1,0 +1,13 @@
+{
+  "name": "littleloop",
+  "version": "1.0.0",
+  "description": "A simple social media app",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "*",
+    "express": "*"
+  }
+}

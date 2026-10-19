@@ -1,0 +1,92 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f4f3ee;
+  color: #292b26;
+  font-family: Arial, sans-serif;
+}
+
+header {
+  padding: 20px 8%;
+  background: #ffffff;
+  border-bottom: 1px solid #dddddd;
+}
+
+header h1 {
+  margin: 0;
+  color: #385e48;
+}
+
+header p {
+  margin-bottom: 0;
+  color: #777777;
+}
+
+main {
+  max-width: 650px;
+  margin: 30px auto;
+  padding: 0 16px;
+}
+
+.composer,
+.feed {
+  margin-bottom: 18px;
+  padding: 20px;
+  border: 1px solid #e5e5df;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+h2 {
+  margin-top: 0;
+  font-size: 20px;
+}
+
+textarea {
+  width: 100%;
+  min-height: 90px;
+  padding: 12px;
+  border: 1px solid #cccccc;
+  border-radius: 8px;
+  font: inherit;
+  resize: vertical;
+}
+
+button {
+  margin-top: 10px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  background: #385e48;
+  color: #ffffff;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #294835;
+}
+
+.post {
+  padding: 14px 0;
+  border-top: 1px solid #eeeeee;
+}
+
+.post p {
+  color: #555555;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 500px) {
+  header {
+    padding: 18px 20px;
+  }
+
+  main {
+    margin-top: 18px;
+  }
+}

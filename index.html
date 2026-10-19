@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LittleLoop</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>LittleLoop</h1>
+    <p>A little corner of the internet</p>
+  </header>
+
+  <main>
+    <section class="composer">
+      <h2>Share a thought</h2>
+      <form id="postForm">
+        <textarea id="postText" placeholder="What's on your mind?"></textarea>
+        <button type="submit">Post</button>
+      </form>
+    </section>
+
+    <section class="feed">
+      <h2>Your Feed</h2>
+      <div id="postList"></div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
