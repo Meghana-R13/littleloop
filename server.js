@@ -7,7 +7,6 @@ const db = new Database("littleloop.db");
 
 app.use(express.json());
 
-// Database tables
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -19,8 +18,7 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     message TEXT NOT NULL,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
 
   CREATE TABLE IF NOT EXISTS likes (
@@ -44,13 +42,11 @@ db.exec(`
   );
 `);
 
-// First user: neenu
 db.prepare(`
   INSERT OR IGNORE INTO users (id, name, username)
   VALUES (1, 'Alex Morgan', 'alexmorgan')
 `).run();
 
-// Website files serve maadodu
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
@@ -63,21 +59,36 @@ app.get("/app.js", (req, res) => {
   res.sendFile(path.join(__dirname, "app.js"));
 });
 
-// Ella posts retrieve maadodu
+// Posts jothege avugala comments kooda kalisutte
 app.get("/api/posts", (req, res) => {
   const posts = db.prepare(`
     SELECT posts.id, posts.message, posts.created_at,
-           users.name, users.username,
-           (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id) AS likes
+           users.id AS user_id, users.name, users.username,
+           (SELECT COUNT(*) FROM likes
+            WHERE likes.post_id = posts.id) AS likes
     FROM posts
     JOIN users ON users.id = posts.user_id
     ORDER BY posts.id DESC
   `).all();
 
-  res.json(posts);
+  const getComments = db.prepare(`
+    SELECT comments.id, comments.message, comments.created_at,
+           users.name, users.username
+    FROM comments
+    JOIN users ON users.id = comments.user_id
+    WHERE comments.post_id = ?
+    ORDER BY comments.id ASC
+  `);
+
+  const postsWithComments = posts.map(post => ({
+    ...post,
+    comments: getComments.all(post.id)
+  }));
+
+  res.json(postsWithComments);
 });
 
-// Hosa post create maadodu
+// Hosa post create maadutte
 app.post("/api/posts", (req, res) => {
   const message = String(req.body.message || "").trim();
 
@@ -92,14 +103,11 @@ app.post("/api/posts", (req, res) => {
 
   res.status(201).json({
     id: result.lastInsertRowid,
-    name: "Alex Morgan",
-    username: "alexmorgan",
-    message: message,
-    likes: 0
+    message
   });
 });
 
-// Post like maadodu / unlike maadodu
+// Like / unlike
 app.post("/api/posts/:id/like", (req, res) => {
   const postId = Number(req.params.id);
 
@@ -118,14 +126,14 @@ app.post("/api/posts/:id/like", (req, res) => {
     `).run(postId);
   }
 
-  const totalLikes = db.prepare(`
+  const likes = db.prepare(`
     SELECT COUNT(*) AS count FROM likes WHERE post_id = ?
   `).get(postId).count;
 
-  res.json({ liked: !alreadyLiked, likes: totalLikes });
+  res.json({ liked: !alreadyLiked, likes });
 });
 
-// Post-ge comment add maadodu
+// Comment database-ge save maadutte
 app.post("/api/posts/:id/comments", (req, res) => {
   const postId = Number(req.params.id);
   const message = String(req.body.message || "").trim();
@@ -142,22 +150,68 @@ app.post("/api/posts/:id/comments", (req, res) => {
   res.status(201).json({ message: "Comment added" });
 });
 
-// Users list maadodu
+// Ninna profile details retrieve maadutte
+app.get("/api/users/1", (req, res) => {
+  const user = db.prepare(`
+    SELECT id, name, username FROM users WHERE id = 1
+  `).get();
+
+  res.json(user);
+});
+
+// Ninna profile edit maadutte
+app.put("/api/users/1", (req, res) => {
+  const name = String(req.body.name || "").trim();
+  const username = String(req.body.username || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^@/, "");
+
+  if (!name || !username) {
+    return res.status(400).json({
+      error: "Name and username are required"
+    });
+  }
+
+  try {
+    db.prepare(`
+      UPDATE users SET name = ?, username = ? WHERE id = 1
+    `).run(name, username);
+
+    res.json({ id: 1, name, username });
+  } catch (error) {
+    res.status(409).json({ error: "That username is already taken" });
+  }
+});
+
+// Users list mattu follow status
 app.get("/api/users", (req, res) => {
   const users = db.prepare(`
-    SELECT id, name, username FROM users ORDER BY name
+    SELECT users.id, users.name, users.username,
+      EXISTS(
+        SELECT 1 FROM follows
+        WHERE follows.follower_id = 1
+          AND follows.following_id = users.id
+      ) AS following
+    FROM users
+    ORDER BY users.id
   `).all();
 
   res.json(users);
 });
 
-// Hosa user profile create maadodu
+// Demo profiles create maadoke
 app.post("/api/users", (req, res) => {
   const name = String(req.body.name || "").trim();
-  const username = String(req.body.username || "").trim().toLowerCase();
+  const username = String(req.body.username || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^@/, "");
 
   if (!name || !username) {
-    return res.status(400).json({ error: "Name and username are required" });
+    return res.status(400).json({
+      error: "Name and username are required"
+    });
   }
 
   try {
@@ -167,20 +221,22 @@ app.post("/api/users", (req, res) => {
 
     res.status(201).json({
       id: result.lastInsertRowid,
-      name: name,
-      username: username
+      name,
+      username
     });
   } catch (error) {
     res.status(409).json({ error: "That username is already taken" });
   }
 });
 
-// User-na follow / unfollow maadodu
+// Follow / unfollow
 app.post("/api/users/:id/follow", (req, res) => {
   const followingId = Number(req.params.id);
 
   if (followingId === 1) {
-    return res.status(400).json({ error: "You cannot follow yourself" });
+    return res.status(400).json({
+      error: "You cannot follow yourself"
+    });
   }
 
   const alreadyFollowing = db.prepare(`
@@ -203,8 +259,6 @@ app.post("/api/users/:id/follow", (req, res) => {
   res.json({ following: !alreadyFollowing });
 });
 
-const PORT = 3000;
-
-app.listen(PORT, () => {
-  console.log(`LittleLoop running at http://localhost:${PORT}`);
+app.listen(3000, () => {
+  console.log("LittleLoop running at http://localhost:3000");
 });

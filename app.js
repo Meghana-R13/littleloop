@@ -1,11 +1,16 @@
 const API = "/api";
+
 const postForm = document.getElementById("postForm");
 const postText = document.getElementById("postText");
 const postList = document.getElementById("postList");
 
 let posts = [];
-let comments = JSON.parse(localStorage.getItem("littleloopComments") || "{}");
-let following = JSON.parse(localStorage.getItem("littleloopFollowing") || "[]");
+let profile = null;
+let peopleSection;
+
+let likedPosts = JSON.parse(
+  localStorage.getItem("littleloopLikedPosts") || "[]"
+);
 
 async function request(url, options = {}) {
   const response = await fetch(url, {
@@ -22,14 +27,73 @@ async function request(url, options = {}) {
   return data;
 }
 
+// Ninna profile form create maadi page-ge add maadutte
+async function loadProfile() {
+  profile = await request(`${API}/users/1`);
+
+  let profileSection = document.getElementById("profileSection");
+
+  if (!profileSection) {
+    profileSection = document.createElement("section");
+    profileSection.id = "profileSection";
+    profileSection.className = "composer";
+    document.querySelector("main").prepend(profileSection);
+  }
+
+  profileSection.innerHTML = `
+    <h2>Your Profile</h2>
+    <form id="profileForm">
+      <input
+        id="profileName"
+        type="text"
+        placeholder="Your name"
+        required
+      >
+      <input
+        id="profileUsername"
+        type="text"
+        placeholder="Your username"
+        required
+      >
+      <button type="submit">Save Profile</button>
+    </form>
+  `;
+
+  document.getElementById("profileName").value = profile.name;
+  document.getElementById("profileUsername").value = profile.username;
+
+  document
+    .getElementById("profileForm")
+    .addEventListener("submit", async function (event) {
+      event.preventDefault();
+
+      const name = document.getElementById("profileName").value.trim();
+      const username = document
+        .getElementById("profileUsername")
+        .value.trim();
+
+      try {
+        profile = await request(`${API}/users/1`, {
+          method: "PUT",
+          body: JSON.stringify({ name, username })
+        });
+
+        alert("Profile saved!");
+        await loadPosts();
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+}
+
 function makeButton(label) {
   const button = document.createElement("button");
   button.type = "button";
   button.textContent = label;
-  button.style.marginRight = "8px";
   return button;
 }
 
+// Posts mattu database comments display maadutte
 function displayPosts() {
   postList.innerHTML = "";
 
@@ -38,13 +102,14 @@ function displayPosts() {
     card.className = "post";
 
     const author = document.createElement("strong");
-    author.textContent = post.name;
+    author.textContent = post.name + "  @" + post.username;
 
     const message = document.createElement("p");
     message.textContent = post.message;
 
+    const isLiked = likedPosts.includes(post.id);
     const likeButton = makeButton(
-      (post.liked ? "♥ " : "♡ ") + (post.likes || 0) + " Like"
+      (isLiked ? "♥ " : "♡ ") + post.likes + " Like"
     );
 
     likeButton.addEventListener("click", async function () {
@@ -53,29 +118,40 @@ function displayPosts() {
           method: "POST"
         });
 
-        post.likes = result.likes;
-        post.liked = result.liked;
-        displayPosts();
+        if (result.liked && !likedPosts.includes(post.id)) {
+          likedPosts.push(post.id);
+        } else if (!result.liked) {
+          likedPosts = likedPosts.filter(id => id !== post.id);
+        }
+
+        localStorage.setItem(
+          "littleloopLikedPosts",
+          JSON.stringify(likedPosts)
+        );
+
+        await loadPosts();
       } catch (error) {
         alert(error.message);
       }
     });
 
-    const commentList = document.createElement("div");
-    const savedComments = comments[post.id] || [];
+    const commentsArea = document.createElement("div");
 
-    savedComments.forEach(function (comment) {
-      const commentText = document.createElement("p");
-      commentText.textContent = comment;
-      commentList.append(commentText);
+    post.comments.forEach(function (comment) {
+      const commentLine = document.createElement("p");
+      commentLine.textContent =
+        comment.name + " @" + comment.username + ": " + comment.message;
+      commentsArea.append(commentLine);
     });
 
     const commentForm = document.createElement("form");
     const commentInput = document.createElement("input");
+    commentInput.type = "text";
     commentInput.placeholder = "Write a comment";
     commentInput.required = true;
 
     const commentButton = document.createElement("button");
+    commentButton.type = "submit";
     commentButton.textContent = "Comment";
 
     commentForm.append(commentInput, commentButton);
@@ -83,25 +159,19 @@ function displayPosts() {
     commentForm.addEventListener("submit", async function (event) {
       event.preventDefault();
 
-      const text = commentInput.value.trim();
-      if (!text) return;
-
       try {
         await request(`${API}/posts/${post.id}/comments`, {
           method: "POST",
-          body: JSON.stringify({ message: text })
+          body: JSON.stringify({ message: commentInput.value.trim() })
         });
 
-        comments[post.id] = comments[post.id] || [];
-        comments[post.id].push("You: " + text);
-        localStorage.setItem("littleloopComments", JSON.stringify(comments));
-        displayPosts();
+        await loadPosts();
       } catch (error) {
         alert(error.message);
       }
     });
 
-    card.append(author, message, likeButton, commentList, commentForm);
+    card.append(author, message, likeButton, commentsArea, commentForm);
     postList.append(card);
   });
 }
@@ -118,7 +188,7 @@ async function loadPosts() {
     for (const message of sampleMessages) {
       await request(`${API}/posts`, {
         method: "POST",
-        body: JSON.stringify({ message: message })
+        body: JSON.stringify({ message })
       });
     }
 
@@ -128,25 +198,7 @@ async function loadPosts() {
   displayPosts();
 }
 
-postForm.addEventListener("submit", async function (event) {
-  event.preventDefault();
-
-  const message = postText.value.trim();
-  if (!message) return;
-
-  try {
-    await request(`${API}/posts`, {
-      method: "POST",
-      body: JSON.stringify({ message: message })
-    });
-
-    postText.value = "";
-    await loadPosts();
-  } catch (error) {
-    alert(error.message);
-  }
-});
-
+// Demo users create maadi, follow buttons show maadutte
 async function loadPeople() {
   const samplePeople = [
     { name: "Maya Patel", username: "mayapatel" },
@@ -161,67 +213,75 @@ async function loadPeople() {
         body: JSON.stringify(person)
       });
     } catch (error) {
-      // Username already exists, so continue.
+      // Ee username already idre next user-ge hogutte.
     }
   }
 
   const users = await request(`${API}/users`);
-  const people = users.filter(function (user) {
-    return user.id !== 1;
-  });
+  const otherUsers = users.filter(user => user.id !== 1);
 
-  const section = document.createElement("section");
-  section.className = "card";
-  section.innerHTML = "<h2>People to follow</h2>";
+  peopleSection = document.createElement("section");
+  peopleSection.className = "feed";
+  peopleSection.innerHTML = "<h2>People to Follow</h2>";
 
-  people.forEach(function (person) {
+  otherUsers.forEach(function (person) {
     const row = document.createElement("p");
-    const label = document.createElement("span");
-    label.textContent = person.name + " ";
+    const name = document.createElement("span");
+    name.textContent = person.name + "  @" + person.username + " ";
 
-    const button = makeButton(
-      following.includes(person.id) ? "Following" : "Follow"
+    const followButton = makeButton(
+      person.following ? "Following" : "Follow"
     );
 
-    button.addEventListener("click", async function () {
+    followButton.addEventListener("click", async function () {
       try {
         const result = await request(
           `${API}/users/${person.id}/follow`,
           { method: "POST" }
         );
 
-        if (result.following) {
-          following.push(person.id);
-          button.textContent = "Following";
-        } else {
-          following = following.filter(function (id) {
-            return id !== person.id;
-          });
-          button.textContent = "Follow";
-        }
-
-        localStorage.setItem(
-          "littleloopFollowing",
-          JSON.stringify(following)
-        );
+        followButton.textContent = result.following
+          ? "Following"
+          : "Follow";
       } catch (error) {
         alert(error.message);
       }
     });
 
-    row.append(label, button);
-    section.append(row);
+    row.append(name, followButton);
+    peopleSection.append(row);
   });
 
-  document.querySelector("main").append(section);
+  document.querySelector("main").append(peopleSection);
 }
+
+// Hosa post database-ge save maadutte
+postForm.addEventListener("submit", async function (event) {
+  event.preventDefault();
+
+  const message = postText.value.trim();
+  if (!message) return;
+
+  try {
+    await request(`${API}/posts`, {
+      method: "POST",
+      body: JSON.stringify({ message })
+    });
+
+    postText.value = "";
+    await loadPosts();
+  } catch (error) {
+    alert(error.message);
+  }
+});
 
 async function startApp() {
   try {
+    await loadProfile();
     await loadPosts();
     await loadPeople();
   } catch (error) {
-    alert("Backend start aagilla. Terminal alli npm start maadi.");
+    alert("Server start aagideya check maadu. Error: " + error.message);
   }
 }
 
