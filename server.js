@@ -59,7 +59,7 @@ app.get("/app.js", (req, res) => {
   res.sendFile(path.join(__dirname, "app.js"));
 });
 
-// Posts jothege avugala comments kooda kalisutte
+// Sends posts along with their comments.
 app.get("/api/posts", (req, res) => {
   const posts = db.prepare(`
     SELECT posts.id, posts.message, posts.created_at,
@@ -88,7 +88,7 @@ app.get("/api/posts", (req, res) => {
   res.json(postsWithComments);
 });
 
-// Hosa post create maadutte
+// Creates a new post.
 app.post("/api/posts", (req, res) => {
   const message = String(req.body.message || "").trim();
 
@@ -107,7 +107,7 @@ app.post("/api/posts", (req, res) => {
   });
 });
 
-// Like / unlike
+// Likes or unlikes a post.
 app.post("/api/posts/:id/like", (req, res) => {
   const postId = Number(req.params.id);
 
@@ -133,7 +133,7 @@ app.post("/api/posts/:id/like", (req, res) => {
   res.json({ liked: !alreadyLiked, likes });
 });
 
-// Comment database-ge save maadutte
+// Saves a comment to the database.
 app.post("/api/posts/:id/comments", (req, res) => {
   const postId = Number(req.params.id);
   const message = String(req.body.message || "").trim();
@@ -150,7 +150,7 @@ app.post("/api/posts/:id/comments", (req, res) => {
   res.status(201).json({ message: "Comment added" });
 });
 
-// Ninna profile details retrieve maadutte
+// Retrieves your profile details.
 app.get("/api/users/1", (req, res) => {
   const user = db.prepare(`
     SELECT id, name, username FROM users WHERE id = 1
@@ -159,7 +159,7 @@ app.get("/api/users/1", (req, res) => {
   res.json(user);
 });
 
-// Ninna profile edit maadutte
+// Updates your profile.
 app.put("/api/users/1", (req, res) => {
   const name = String(req.body.name || "").trim();
   const username = String(req.body.username || "")
@@ -184,7 +184,7 @@ app.put("/api/users/1", (req, res) => {
   }
 });
 
-// Users list mattu follow status
+// Gets the user list and follow status.
 app.get("/api/users", (req, res) => {
   const users = db.prepare(`
     SELECT users.id, users.name, users.username,
@@ -200,7 +200,7 @@ app.get("/api/users", (req, res) => {
   res.json(users);
 });
 
-// Demo profiles create maadoke
+// Creates demo profiles.
 app.post("/api/users", (req, res) => {
   const name = String(req.body.name || "").trim();
   const username = String(req.body.username || "")
@@ -229,7 +229,7 @@ app.post("/api/users", (req, res) => {
   }
 });
 
-// Follow / unfollow
+// Follows or unfollows a user.
 app.post("/api/users/:id/follow", (req, res) => {
   const followingId = Number(req.params.id);
 

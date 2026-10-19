@@ -27,7 +27,7 @@ async function request(url, options = {}) {
   return data;
 }
 
-// Ninna profile form create maadi page-ge add maadutte
+// Creates the profile form and adds it to the page.
 async function loadProfile() {
   profile = await request(`${API}/users/1`);
 
@@ -93,7 +93,7 @@ function makeButton(label) {
   return button;
 }
 
-// Posts mattu database comments display maadutte
+// Displays posts and their database comments.
 function displayPosts() {
   postList.innerHTML = "";
 
@@ -198,7 +198,7 @@ async function loadPosts() {
   displayPosts();
 }
 
-// Demo users create maadi, follow buttons show maadutte
+// Creates demo users and displays follow buttons.
 async function loadPeople() {
   const samplePeople = [
     { name: "Maya Patel", username: "mayapatel" },
@@ -213,7 +213,7 @@ async function loadPeople() {
         body: JSON.stringify(person)
       });
     } catch (error) {
-      // Ee username already idre next user-ge hogutte.
+      // If this username already exists, continue to the next user.
     }
   }
 
@@ -255,7 +255,7 @@ async function loadPeople() {
   document.querySelector("main").append(peopleSection);
 }
 
-// Hosa post database-ge save maadutte
+// Saves a new post to the database.
 postForm.addEventListener("submit", async function (event) {
   event.preventDefault();
 
@@ -281,7 +281,7 @@ async function startApp() {
     await loadPosts();
     await loadPeople();
   } catch (error) {
-    alert("Server start aagideya check maadu. Error: " + error.message);
+    alert("Check whether the server is running. Error: " + error.message);
   }
 }
 
